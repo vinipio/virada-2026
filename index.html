@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomia da virada — 2º turno 2026, município a município</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1c1c1c;--ink2:#555;--muted:#8a8a8a;--line:#e3e1dc;--soft:#f0eee9;
+ --lula:#b8322a;--flavio:#2457b3;--neutro:#e9e7e2;--abst-up:#1f7a3a;--abst-dn:#d97706;--acc:#b8322a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{padding:18px 24px 10px;border-bottom:1px solid var(--line);background:var(--card)}
+header h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em}
+header p{margin:4px 0 0;color:var(--ink2);max-width:1100px}
+.wrap{display:grid;grid-template-columns:minmax(420px,1fr) minmax(460px,760px);gap:18px;padding:16px 24px;align-items:start}
+@media (max-width:1000px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.controls label{font-size:12px;color:var(--ink2);display:flex;flex-direction:column;gap:3px}
+select,input{font:inherit;padding:6px 8px;border:1px solid #cfcbc3;border-radius:6px;background:#fff;color:var(--ink)}
+input#busca{min-width:260px}
+button{font:inherit;padding:6px 10px;border:1px solid #cfcbc3;border-radius:6px;background:#fff;cursor:pointer}
+button:hover{background:var(--soft)}
+#mapa{width:100%;height:auto;display:block;background:#fbfaf8;border-radius:8px;border:1px solid var(--line);cursor:grab}
+#mapa path.mu{stroke:#fff;stroke-width:.25;vector-effect:non-scaling-stroke}
+#mapa path.mu:hover{stroke:#000;stroke-width:1.2}
+#mapa path.mu.sel{stroke:#000;stroke-width:2}
+#mapa path.uf{fill:none;stroke:#444;stroke-width:.8;pointer-events:none;vector-effect:non-scaling-stroke}
+.legenda{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--ink2);flex-wrap:wrap}
+.legenda .barra{height:12px;width:220px;border-radius:3px;border:1px solid var(--line)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line)}
+.tip{position:fixed;pointer-events:none;background:#1c1c1c;color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;display:none;z-index:9;max-width:300px}
+h2{font-size:17px;margin:0 0 4px}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);margin:18px 0 6px}
+.sub{color:var(--ink2);font-size:12.5px;margin:0 0 8px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.cand{border-radius:8px;padding:10px 12px;border:1px solid var(--line);border-left:5px solid}
+.cand .nm{font-weight:700;font-size:13px}
+.cand .big{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.cand .d{color:var(--ink2);font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--ink2);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
+td.l,th.l{text-align:left;white-space:normal}
+tr.tot td{font-weight:700;background:var(--soft)}
+.bar{height:14px;border-radius:4px;overflow:hidden;display:flex;background:var(--neutro);margin:6px 0}
+.bar div{height:100%}
+.pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;background:var(--soft);color:var(--ink2)}
+.nota{font-size:11.5px;color:var(--muted);margin-top:6px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0}
+.kv div{background:var(--soft);border-radius:8px;padding:8px 10px}
+.kv .k{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+.kv .v{font-size:18px;font-weight:700}
+.tw{overflow-x:auto}
+.pos{color:var(--lula)}.neg{color:var(--flavio)}
+.quartil-sel{margin:6px 0}
+footer{padding:10px 24px 24px;color:var(--muted);font-size:12px}
+a{color:inherit}
+.err{background:#fff4f2;border:1px solid #f1c7c2;padding:10px;border-radius:8px;color:#8a2a22}
+</style>
+</head>
+<body>
+<header>
+ <h1>Anatomia da virada — 2º turno 2026, município a município</h1>
+ <p id="lead">Carregando…</p>
+</header>
+<div class="wrap">
+ <div class="card">
+  <div class="controls">
+   <label>Colorir o mapa por
+    <select id="metrica">
+     <option value="lula_fatia_saldo">Fatia do saldo que foi para Lula (%)</option>
+     <option value="lula_delta_pp">Δ Lula, 1º → 2º turno (pp dos válidos)</option>
+     <option value="flavio_delta_pp">Δ Flávio, 1º → 2º turno (pp dos válidos)</option>
+     <option value="abst_delta_pp">Δ abstenção, 1º → 2º turno (pp)</option>
+     <option value="outros_pct_t1">Terceira via no 1º turno (% dos válidos)</option>
+    </select></label>
+   <label>UF <select id="uf"><option value="">Todas</option></select></label>
+   <label>Município (digite para buscar)
+    <input id="busca" list="lista" placeholder="ex.: Florianópolis, Toledo PR, Macapá" autocomplete="off">
+    <datalist id="lista"></datalist></label>
+   <button id="limpar" title="Voltar ao Brasil">Brasil</button>
+  </div>
+  <svg id="mapa" viewBox="0 0 900 900"></svg>
+  <div class="legenda" id="legenda"></div>
+  <p class="nota">Clique num município para abrir o detalhe; arraste e use a roda do mouse para navegar. Cinza: sem saldo positivo (ver detalhe) ou sem malha.</p>
+ </div>
+ <div class="card" id="painel"><p class="sub">Carregando dados…</p></div>
+</div>
+<footer id="rodape"></footer>
+<div class="tip" id="tip"></div>
+
+<script>
+(async function(){
+const $=s=>document.querySelector(s);
+const f0=n=>n==null?'—':Math.round(n).toLocaleString('pt-BR');
+const f1=n=>n==null?'—':n.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const f2=n=>n==null?'—':n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const sg=n=>n==null?'—':(n>0?'+':'')+f0(n);
+const sg1=n=>n==null?'—':(n>0?'+':'')+f1(n);
+const pc=n=>n==null?'—':f2(n)+'%';
+const cap=s=>s.toLowerCase().replace(/(^|[\s(\-'])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase()).replace(/\bD([aeo]s?)\b/g,(m,a)=>'d'+a).replace(/\bE\b/g,'e');
+
+let R,M,T;
+try{
+ [R,M,T]=await Promise.all(['dados/resumo.json','dados/municipios.json','dados/malha.json'].map(u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u+': '+r.status);return r.json()})));
+}catch(e){$('#painel').innerHTML=`<div class="err">Não consegui carregar os dados (${e.message}). Se você abriu o arquivo direto do disco, sirva a pasta por HTTP (ABRIR-SITE.cmd) ou publique no GitHub Pages.</div>`;return}
+const L=R.L,F=R.F,NM=R.nomes,N=R.nacional;
+const nome=c=>({'70':'Cury','14':'Renan Santos','55':'Caiado','30':'Zema','80':'Samara','nanicos':'Demais candidatos','comparecimento':'Comparecimento extra','brancos':'Brancos → voto','nulos':'Nulos → voto','abstencao':'Abstenção'})[c]||cap(NM[c]||c);
+const byKey=new Map(M.map(m=>[m.uf+'|'+m.codigo,m]));
+const detalheCache={};
+
+$('#lead').textContent=`Nos mesmos ${f0(N.grupos)} grupos de seções do TSE, Lula foi de ${pc(N.lula_pct_t1)} para ${pc(N.lula_pct_t2)} dos válidos (${sg(N.delta_lula)} votos) e Flávio de ${pc(N.flavio_pct_t1)} para ${pc(N.flavio_pct_t2)} (${sg(N.delta_flavio)}). Havia ${f0(N.saldo)} votos "em jogo" (saldo) e Lula ficou com ${f1(N.lula_fatia_saldo)}% deles. Dados: boletins de urna do TSE, comparados seção a seção; base gerada em ${new Date(R.gerado_em).toLocaleString('pt-BR')}.`;
+$('#rodape').innerHTML=`Metodologia: o <b>saldo</b> de um recorte é outros candidatos do 1º turno − Δbrancos − Δnulos + Δcomparecimento, e por identidade contábil é igual a ΔLula + ΔFlávio em cada seção. A <b>regressão ecológica</b> (sem intercepto, por grupo de seções) estima a fração de cada fonte que foi para Lula; é associação entre seções, não rastreamento de eleitores, e só é calculada em municípios com ≥ ${R.min_grupos} grupos (${f0(R.municipios_com_regressao)} municípios). Os <b>quartis</b> não usam modelo: ordenam as seções pela fatia da fonte no 1º turno, cortam em quatro blocos e somam o que aconteceu em cada um (≥ 20 grupos; ${f0(R.municipios_com_quartis)} municípios). ${f0(M.length)} municípios (incluindo ${f0(M.filter(m=>m.uf==='ZZ').length)} do exterior, sem mapa).`;
+
+// ---------- métricas e cores ----------
+const METR={
+ lula_fatia_saldo:{dom:[0,50,100],cores:['var(--flavio)','var(--neutro)','var(--lula)'],hex:['#2457b3','#e9e7e2','#b8322a'],fmt:v=>f1(v)+'%',rot:['0% (tudo p/ Flávio)','50%','100% (tudo p/ Lula)'],txt:'Fatia do saldo para Lula'},
+ lula_delta_pp:{dom:[-10,0,10],hex:['#2457b3','#e9e7e2','#b8322a'],fmt:v=>sg1(v)+' pp',rot:['−10 pp','0','+10 pp'],txt:'Δ Lula (pp dos válidos)'},
+ flavio_delta_pp:{dom:[-10,0,10],hex:['#b8322a','#e9e7e2','#2457b3'],fmt:v=>sg1(v)+' pp',rot:['−10 pp','0','+10 pp'],txt:'Δ Flávio (pp dos válidos)'},
+ abst_delta_pp:{dom:[-6,0,6],hex:['#d97706','#e9e7e2','#1f7a3a'],fmt:v=>sg1(v)+' pp',rot:['−6 pp (abstenção caiu)','0','+6 pp (subiu)'],txt:'Δ abstenção (pp)'},
+ outros_pct_t1:{dom:[0,8,16],hex:['#f3efe6','#9c8a5a','#3d3420'],fmt:v=>f1(v)+'%',rot:['0%','8%','16%+'],txt:'Terceira via no 1º turno'},
+};
+let metrica='lula_fatia_saldo';
+function escala(){const m=METR[metrica];return d3.scaleLinear().domain(m.dom).range(m.hex).interpolate(d3.interpolateLab).clamp(true)}
+function corDe(d){const v=d[metrica];return v==null?'#cfcbc3':escala()(v)}
+
+// ---------- mapa ----------
+const svg=d3.select('#mapa'),W=900,H=900;
+const g=svg.append('g');
+const feats=topojson.feature(T,T.objects.mun).features;
+const proj=d3.geoMercator().fitExtent([[10,10],[W-10,H-10]],{type:'FeatureCollection',features:feats});
+const path=d3.geoPath(proj);
+const tip=$('#tip');
+const paths=g.selectAll('path.mu').data(feats).join('path').attr('class','mu').attr('d',path)
+ .on('mousemove',(ev,d)=>{const m=byKey.get(d.id);if(!m)return;tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';
+   tip.innerHTML=`<b>${cap(m.nome)} / ${m.uf}</b><br>${METR[metrica].txt}: ${m[metrica]==null?'—':METR[metrica].fmt(m[metrica])}<br>Lula ${pc(m.lula_pct_t1)} → ${pc(m.lula_pct_t2)} (${sg(m.delta_lula)})<br>Flávio ${pc(m.flavio_pct_t1)} → ${pc(m.flavio_pct_t2)} (${sg(m.delta_flavio)})<br>Saldo ${sg(m.saldo)} · ${m.grupos} grupos`})
+ .on('mouseleave',()=>tip.style.display='none')
+ .on('click',(ev,d)=>selecionar(d.id));
+g.append('path').attr('class','uf').attr('d',path(topojson.mesh(T,T.objects.mun,(a,b)=>a.properties.uf!==b.properties.uf)));
+svg.call(d3.zoom().scaleExtent([1,40]).on('zoom',ev=>g.attr('transform',ev.transform)));
+function pintar(){paths.attr('fill',d=>{const m=byKey.get(d.id);return m?corDe(m):'#cfcbc3'});legenda()}
+function legenda(){const m=METR[metrica];const s=escala();const stops=d3.range(0,1.001,.1).map(t=>s(m.dom[0]+t*(m.dom[2]-m.dom[0])));
+ $('#legenda').innerHTML=`<span>${m.rot[0]}</span><div class="barra" style="background:linear-gradient(90deg,${stops.join(',')})"></div><span>${m.rot[2]}</span><span style="margin-left:10px"><span class="sw" style="background:#cfcbc3"></span>sem valor</span>`}
+pintar();
+$('#metrica').onchange=e=>{metrica=e.target.value;pintar()};
+
+// ---------- busca ----------
+const ufs=[...new Set(M.map(m=>m.uf))].sort();
+$('#uf').innerHTML='<option value="">Todas</option>'+ufs.map(u=>`<option>${u}</option>`).join('');
+function montarLista(){const uf=$('#uf').value;const it=M.filter(m=>!uf||m.uf===uf).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+ $('#lista').innerHTML=it.map(m=>`<option value="${cap(m.nome)} (${m.uf})">`).join('')}
+montarLista();$('#uf').onchange=montarLista;
+const norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+function achar(txt){let t=norm(txt);let uf=$('#uf').value;const mm=t.match(/\(([a-z]{2})\)\s*$/)||t.match(/\s([a-z]{2})$/);if(mm&&ufs.includes(mm[1].toUpperCase())){uf=mm[1].toUpperCase();t=t.slice(0,mm.index).trim()}
+ const c=M.filter(m=>(!uf||m.uf===uf)&&norm(m.nome)===t);if(c.length)return c.sort((a,b)=>b.aptos_t2-a.aptos_t2)[0];
+ const p=M.filter(m=>(!uf||m.uf===uf)&&norm(m.nome).startsWith(t));return p.sort((a,b)=>b.aptos_t2-a.aptos_t2)[0]}
+$('#busca').addEventListener('change',e=>{const m=achar(e.target.value);if(m)selecionar(m.uf+'|'+m.codigo)});
+$('#busca').addEventListener('keydown',e=>{if(e.key==='Enter'){const m=achar(e.target.value);if(m)selecionar(m.uf+'|'+m.codigo)}});
+$('#limpar').onclick=()=>{selecionado=null;paths.classed('sel',false);$('#busca').value='';painelBrasil();history.replaceState(null,'','#')};
+
+// ---------- painel ----------
+let selecionado=null;
+async function selecionar(key){const m=byKey.get(key);if(!m)return;selecionado=key;$('#busca').value=`${cap(m.nome)} (${m.uf})`;
+ paths.classed('sel',d=>d.id===key);const sel=paths.filter(d=>d.id===key);if(!sel.empty()){sel.raise();g.select('path.uf').raise()}
+ history.replaceState(null,'',`#${m.uf}-${m.codigo}`);
+ $('#painel').innerHTML='<p class="sub">Carregando detalhe…</p>';
+ if(!detalheCache[m.uf]){try{detalheCache[m.uf]=await fetch(`dados/detalhe/${m.uf}.json`).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})}catch(e){$('#painel').innerHTML=`<div class="err">Não consegui carregar dados/detalhe/${m.uf}.json (${e.message}).</div>`;return}}
+ painelMunicipio(detalheCache[m.uf][m.codigo])}
+
+function tabelaTurnos(d){
+ const outros=Object.keys(NM).filter(c=>c!==L&&c!==F).map(c=>({c,v:d['c'+c+'_t1']||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+ const row=(rot,v1,v2,p1,p2,cls='')=>`<tr class="${cls}"><td class="l">${rot}</td><td>${f0(v1)}${p1!=null?` <span class="pill">${pc(p1)}</span>`:''}</td><td>${f0(v2)}${p2!=null?` <span class="pill">${pc(p2)}</span>`:''}</td><td>${v1==null||v2==null?'—':sg(v2-v1)}</td></tr>`;
+ let h='<div class="tw"><table><tr><th class="l"></th><th>1º turno</th><th>2º turno</th><th>Δ</th></tr>';
+ h+=row('Lula',d.lula_t1,d.lula_t2,d.lula_pct_t1,d.lula_pct_t2);
+ h+=row('Flávio Bolsonaro',d.flavio_t1,d.flavio_t2,d.flavio_pct_t1,d.flavio_pct_t2);
+ for(const o of outros)h+=row(nome(o.c),o.v,0,d.validos_t1?100*o.v/d.validos_t1:null,null);
+ h+=row('Válidos',d.validos_t1,d.validos_t2,null,null,'tot');
+ h+=row('Brancos',d.brancos_t1,d.brancos_t2,d.comparecimento_t1?100*d.brancos_t1/d.comparecimento_t1:null,d.comparecimento_t2?100*d.brancos_t2/d.comparecimento_t2:null);
+ h+=row('Nulos',d.nulos_t1,d.nulos_t2,d.comparecimento_t1?100*d.nulos_t1/d.comparecimento_t1:null,d.comparecimento_t2?100*d.nulos_t2/d.comparecimento_t2:null);
+ h+=row('Comparecimento',d.comparecimento_t1,d.comparecimento_t2,null,null,'tot');
+ h+=row('Abstenções',d.abstencoes_t1,d.abstencoes_t2,d.taxa_abst_t1,d.taxa_abst_t2);
+ h+=row('Aptos',d.aptos_t1,d.aptos_t2,null,null);
+ return h+'</table></div><p class="nota">Percentuais de Lula, Flávio e terceira via sobre os válidos; brancos e nulos sobre o comparecimento; abstenção sobre os aptos.</p>'}
+
+function blocoSaldo(d){
+ const partes=[['Outros candidatos do 1º turno',d.outros_t1],['Comparecimento extra (Δ comparecimento)',d.delta_comparecimento],['Brancos que viraram voto (−Δ brancos)',-d.delta_brancos],['Nulos que viraram voto (−Δ nulos)',-d.delta_nulos]];
+ const soma=partes.reduce((s,p)=>s+p[1],0);
+ let h=`<div class="tw"><table><tr><th class="l">Fonte</th><th>Votos</th></tr>${partes.map(p=>`<tr><td class="l">${p[0]}</td><td>${sg(p[1])}</td></tr>`).join('')}<tr class="tot"><td class="l">Saldo em jogo</td><td>${sg(soma)}</td></tr><tr><td class="l">→ Lula (Δ votos)</td><td>${sg(d.delta_lula)}${d.lula_fatia_saldo!=null?` <span class="pill">${f1(d.lula_fatia_saldo)}% do saldo</span>`:''}</td></tr><tr><td class="l">→ Flávio (Δ votos)</td><td>${sg(d.delta_flavio)}${d.flavio_fatia_saldo!=null?` <span class="pill">${f1(d.flavio_fatia_saldo)}% do saldo</span>`:''}</td></tr></table></div>`;
+ if(d.saldo>0){const l=d.lula_fatia_saldo,fl=d.flavio_fatia_saldo;
+  h+=`<div class="bar" title="Divisão do saldo"><div style="width:${Math.max(0,Math.min(100,l))}%;background:var(--lula)"></div><div style="width:${Math.max(0,Math.min(100,fl))}%;background:var(--flavio)"></div></div>`;
+  h+=`<p class="sub">Flávio tinha <b>${f1(d.flavio_fatia_t1_disputa)}%</b> dos votos entre os dois no 1º turno; se o saldo se dividisse nessa proporção ele levaria ${f1(d.flavio_fatia_t1_disputa)}% — levou <b>${f1(fl)}%</b>. ${soma===d.delta_lula+d.delta_flavio?'A soma fecha exatamente (saldo = ΔLula + ΔFlávio).':''}</p>`}
+ else h+=`<p class="sub">Saldo ≤ 0: o comparecimento caiu mais do que a terceira via e brancos/nulos liberaram. Nesse caso a "fatia do saldo" não é definida; leia os Δ em votos — ${d.delta_flavio<0?'Flávio perdeu votos absolutos':'Lula perdeu votos absolutos'} e a abstenção foi de ${pc(d.taxa_abst_t1)} para ${pc(d.taxa_abst_t2)}.</p>`;
+ return h}
+
+function tabelaRegressao(r,cmpUF,cmpBR,ufSigla){
+ const ordem=[...R.grandes,'nanicos','comparecimento','brancos','nulos'].filter(c=>r.fontes[c]);
+ let h=`<div class="tw"><table><tr><th class="l">Fonte</th><th>Em jogo</th><th>→ Lula</th><th>±2 e.p.</th><th>→ Flávio</th><th>≈ votos p/ Lula</th>${cmpUF?`<th>${ufSigla} (ef. fixos)</th>`:''}<th>Brasil (ef. fixos)</th></tr>`;
+ for(const c of ordem){const v=r.fontes[c];const inst=v.ep2>0.5||Math.abs(v.total)<50;
+  h+=`<tr><td class="l">${nome(c)}</td><td>${f0(v.total)}</td><td><b>${Math.round(100*v.beta)}%</b></td><td class="${inst?"neg":""}">±${f1(100*v.ep2)}</td><td>${Math.round(100*(1-v.beta))}%</td><td>${f0(v.beta*v.total)}</td>${cmpUF?`<td>${cmpUF.fontes[c]?Math.round(100*cmpUF.fontes[c].beta)+'%':'—'}</td>`:''}<td>${cmpBR.fontes[c]?Math.round(100*cmpBR.fontes[c].beta)+'%':'—'}</td></tr>`}
+ h+=`<tr class="tot"><td class="l">Soma das estimativas</td><td></td><td></td><td></td><td></td><td>${f0(r.lula_estimado)}</td>${cmpUF?'<td></td>':''}<td></td></tr></table></div>`;
+ h+=`<p class="nota">${f0(r.n)} grupos de seções, R² ${f2(r.r2)}. Estimado ${f0(r.lula_estimado)} contra ${f0(r.lula_observado)} observados para Lula. Frações acima de 100% ou abaixo de 0% e erros-padrão grandes (em azul) indicam fonte pequena demais para o modelo separar; o balanço acima não depende disso. Colunas de comparação: regressão com efeitos fixos de município da UF e do Brasil.</p>`;
+ return h}
+
+function tabelaQuartis(qs,variavel){
+ const rotV={'brancos':'% de brancos','nulos':'% de nulos','abstencao':'% de abstenção'}[variavel]||`% de ${nome(variavel)}`;
+ let h=`<p class="sub">Seções agrupadas pela <b>${rotV}</b> no 1º turno.</p><div class="tw"><table><tr><th class="l">Quartil</th><th>Grupos</th><th>Faixa</th><th>Δ Lula</th><th>Δ Flávio</th><th>Saldo → Lula</th><th>Δ brancos</th><th>Δ nulos</th><th>Δ abst.</th></tr>`;
+ for(const q of qs)h+=`<tr><td class="l">${q.quartil}</td><td>${f0(q.grupos)}</td><td>${q.faixa.replace(/\./g,',')}</td><td class="${q.lula_pp>0?'pos':''}"><b>${sg1(q.lula_pp)}</b></td><td>${sg1(q.flavio_pp)}</td><td>${q.lula_fatia_saldo==null?'—':f1(q.lula_fatia_saldo)+'%'}</td><td>${sg1(q.brancos_pp)}</td><td>${sg1(q.nulos_pp)}</td><td>${sg1(q.abst_pp)}</td></tr>`;
+ return h+'</table></div><p class="nota">Variações em pontos percentuais (Lula e Flávio sobre os válidos; brancos e nulos sobre o comparecimento; abstenção sobre os aptos), 2º turno − 1º turno, somando as seções de cada quartil.</p>'}
+
+function cards(d){return `<div class="cards">
+ <div class="cand" style="border-left-color:var(--lula)"><div class="nm">Lula</div><div class="big">${pc(d.lula_pct_t2)}</div><div class="d">${pc(d.lula_pct_t1)} no 1º turno · ${sg1(d.lula_delta_pp)} pp · ${sg(d.delta_lula)} votos</div></div>
+ <div class="cand" style="border-left-color:var(--flavio)"><div class="nm">Flávio Bolsonaro</div><div class="big">${pc(d.flavio_pct_t2)}</div><div class="d">${pc(d.flavio_pct_t1)} no 1º turno · ${sg1(d.flavio_delta_pp)} pp · ${sg(d.delta_flavio)} votos</div></div></div>`}
+
+function secaoQuartis(Q,id){
+ const vars=R.variaveis_quartis.filter(v=>Q[v]);if(!vars.length)return '';
+ const h=`<h3>Quartis — sem modelo</h3><p class="sub">Seções ordenadas pela fatia da fonte no 1º turno e cortadas em quatro blocos iguais; em cada bloco, o que aconteceu. Se Lula cresce mais onde a fonte era mais forte, é fato observado, não estimativa.</p>
+ <div class="quartil-sel"><label>Fonte <select id="${id}">${vars.map(v=>`<option value="${v}">${v==='brancos'?'Brancos':v==='nulos'?'Nulos':v==='abstencao'?'Abstenção':nome(v)}</option>`).join('')}</select></label></div><div id="${id}-t">${tabelaQuartis(Q[vars[0]],vars[0])}</div>`;
+ setTimeout(()=>{const s=document.getElementById(id);if(s)s.onchange=e=>document.getElementById(id+'-t').innerHTML=tabelaQuartis(Q[e.target.value],e.target.value)},0);
+ return h}
+
+function painelMunicipio(d){
+ const m=byKey.get(d.uf+'|'+d.codigo);const U=R.ufs[d.uf];const cUF=R.coeficientes['UF '+d.uf],cBR=R.coeficientes['Brasil (intra-município)'];
+ let h=`<h2>${cap(d.municipio)} <span class="pill">${d.uf}${d.regiao?' · '+d.regiao:''}</span></h2><p class="sub">${f0(d.grupos)} grupos de seções comparáveis entre os turnos · ${f0(d.aptos_t2)} aptos${d.ibge?'':' · <b>sem malha no mapa</b>'}</p>`;
+ h+=cards(d);
+ h+=`<div class="kv"><div><div class="k">Saldo em jogo</div><div class="v">${sg(d.saldo)}</div></div><div><div class="k">Fatia do saldo → Lula</div><div class="v">${d.lula_fatia_saldo==null?'—':f1(d.lula_fatia_saldo)+'%'}</div></div><div><div class="k">Flávio na disputa, 1º t.</div><div class="v">${f1(d.flavio_fatia_t1_disputa)}%</div></div><div><div class="k">Δ abstenção</div><div class="v">${sg1(d.taxa_abst_t2-d.taxa_abst_t1)} pp</div></div></div>`;
+ if(U)h+=`<p class="sub">Comparação: na UF (${d.uf}) Lula ficou com ${U.lula_fatia_saldo==null?'—':f1(U.lula_fatia_saldo)+'%'} do saldo e cresceu ${sg1(U.lula_delta_pp)} pp; no Brasil, ${f1(N.lula_fatia_saldo)}% e ${sg1(N.lula_delta_pp)} pp.</p>`;
+ h+='<h3>1º × 2º turno</h3>'+tabelaTurnos(d);
+ h+='<h3>Balanço: de onde saiu, para onde foi</h3>'+blocoSaldo(d);
+ h+='<h3>Regressão ecológica — fração de cada fonte que foi para Lula</h3>';
+ if(d.regressao)h+=tabelaRegressao(d.regressao,cUF,cBR,d.uf);
+ else h+=`<p class="sub">Município com ${f0(d.grupos)} grupos — abaixo do mínimo de ${R.min_grupos} para uma regressão própria. Referência: coeficientes da UF ${d.uf}${cUF?` (${[...R.grandes.slice(0,3),'comparecimento','brancos','nulos'].filter(c=>cUF.fontes[c]).map(c=>`${nome(c)} ${Math.round(100*cUF.fontes[c].beta)}%`).join(', ')})`:''} e do Brasil (${[...R.grandes.slice(0,3),'comparecimento','brancos','nulos'].map(c=>`${nome(c)} ${Math.round(100*cBR.fontes[c].beta)}%`).join(', ')}).</p>`;
+ h+=secaoQuartis(d.quartis||{},'qsel');
+ if(!Object.keys(d.quartis||{}).length)h+=`<p class="nota">Sem quartis: menos de 20 grupos de seções.</p>`;
+ $('#painel').innerHTML=h}
+
+function painelBrasil(){
+ const cBR=R.coeficientes['Brasil (intra-município)'],cN=R.coeficientes['Brasil (nacional, sem efeitos fixos)'],RM=R.resumo_municipal,CV=R.validacao_cruzada;
+ let h=`<h2>Brasil + exterior</h2><p class="sub">${f0(N.grupos)} grupos de seções · selecione um município no mapa ou na busca para ver o detalhe dele.</p>`;
+ h+=cards(N);
+ h+=`<div class="kv"><div><div class="k">Saldo em jogo</div><div class="v">${sg(N.saldo)}</div></div><div><div class="k">Fatia do saldo → Lula</div><div class="v">${f1(N.lula_fatia_saldo)}%</div></div><div><div class="k">Flávio na disputa, 1º t.</div><div class="v">${f1(N.flavio_fatia_t1_disputa)}%</div></div><div><div class="k">Δ abstenção</div><div class="v">${sg1(N.taxa_abst_t2-N.taxa_abst_t1)} pp</div></div></div>`;
+ h+='<h3>Balanço nacional</h3>'+blocoSaldo(N);
+ h+=`<h3>Regressão ecológica — Brasil</h3><p class="sub">Efeitos fixos de município (compara seções dentro da mesma cidade, ${f0(cBR.efeitos_fixos)} municípios) e, para comparação, o modelo nacional sem efeitos fixos.</p>`;
+ const ordem=[...R.grandes,'nanicos','comparecimento','brancos','nulos'];
+ h+=`<div class="tw"><table><tr><th class="l">Fonte</th><th>Em jogo</th><th>→ Lula (ef. fixos)</th><th>±2 e.p.</th><th>→ Lula (nacional)</th><th>≈ votos p/ Lula</th></tr>${ordem.map(c=>{const b=cBR.fontes[c],a=cN.fontes[c];return `<tr><td class="l">${nome(c)}</td><td>${f0(b.total)}</td><td><b>${Math.round(100*b.beta)}%</b></td><td>±${f1(100*b.ep2)}</td><td>${Math.round(100*a.beta)}%</td><td>${f0(b.beta*b.total)}</td></tr>`}).join('')}<tr class="tot"><td class="l">Soma das estimativas</td><td></td><td></td><td></td><td></td><td>${f0(cBR.lula_estimado)}</td></tr></table></div><p class="nota">Observado: ${f0(cBR.lula_observado)}. R² ${f2(cBR.r2)} (ef. fixos) e ${f2(cN.r2)} (nacional). Validação cruzada do modelo nacional (ajuste numa metade dos municípios, previsão na outra): ${Object.values(CV).filter(Boolean).map(v=>`${f0(v.estimado)} previstos vs ${f0(v.observado)} observados (erro médio por município ${f1(v.erro_abs_medio_pct)}%)`).join('; ')}.</p>`;
+ h+=`<h3>Por região</h3><div class="tw"><table><tr><th class="l">Região</th><th>Δ Lula (pp)</th><th>Δ Flávio (pp)</th><th>Saldo</th><th>→ Lula</th><th>Cury → Lula</th><th>Renan → Lula</th><th>Caiado → Lula</th><th>Compar. → Lula</th></tr>${Object.entries(R.regioes).sort((a,b)=>(b[1].lula_fatia_saldo||0)-(a[1].lula_fatia_saldo||0)).map(([r,v])=>{const c=R.coeficientes['Região '+r];const b=k=>c&&c.fontes[k]?Math.round(100*c.fontes[k].beta)+'%':'—';return `<tr><td class="l">${r}</td><td>${sg1(v.lula_delta_pp)}</td><td>${sg1(v.flavio_delta_pp)}</td><td>${sg(v.saldo)}</td><td><b>${v.lula_fatia_saldo==null?'—':f1(v.lula_fatia_saldo)+'%'}</b></td><td>${b('70')}</td><td>${b('14')}</td><td>${b('55')}</td><td>${b('comparecimento')}</td></tr>`}).join('')}</table></div>`;
+ h+=`<h3>Município a município</h3><p class="sub">Lula ganhou pontos em ${f0(RM.lula_cresceu_pp)} dos ${f0(RM.n_municipios)} municípios e levou a maior parte do saldo em ${f0(RM.lula_maioria_saldo)}; Flávio perdeu votos absolutos em ${f0(RM.flavio_perdeu_votos)}. Nos ${f0(RM.com_regressao)} municípios com regressão própria: ${Object.entries(RM.fontes).map(([c,v])=>`${nome(c)} mediana ${Math.round(100*v.mediana)}% (quartis ${Math.round(100*v.q1)}–${Math.round(100*v.q3)}%; acima de 50% em ${Math.round(v.pct_maioria_lula)}% das cidades)`).join('; ')}.</p>`;
+ h+=secaoQuartis(R.quartis['Brasil'],'qbr');
+ $('#painel').innerHTML=h}
+
+painelBrasil();
+const hash=location.hash.match(/^#([A-Z]{2})-(\d{5})$/);
+if(hash&&byKey.has(hash[1]+'|'+hash[2]))selecionar(hash[1]+'|'+hash[2]);
+})();
+</script>
+</body>
+</html>

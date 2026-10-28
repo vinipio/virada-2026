@@ -10,10 +10,14 @@ Na pasta `apuracao` (precisa de `virada.json`/`virada-municipio.csv` atualizados
 e `dados/municipios-tse-ibge.csv`):
 
     python virada.py          # se o armazém mudou
+    python horarios.py        # se o armazém mudou (horário de encerramento de cada urna)
     python plataforma.py      # escreve site/dados/resumo.json, municipios.json e detalhe/<UF>.json
 
 O `plataforma.py` importa `Acum`, `regressao` e `quartis` do `virada.py` e aborta se o balanço municipal
-não bater exatamente com o `virada.json`. A malha (`site/dados/malha.json`, TopoJSON) vem de
+não bater exatamente com o `virada.json`. Os recortes **Até 17h30 / Após 17h30** usam a flag de urna
+prorrogada do `horarios-t2.csv` (encerramento ≥ 17h30, registrado no boletim de urna) e refazem balanço,
+regressão e quartis só com as urnas de cada bloco, com as mesmas funções; a base é Brasil + exterior
+(7.605 urnas em 268 municípios) e os percentuais de candidatos são sobre os válidos, como no resto do site. A malha (`site/dados/malha.json`, TopoJSON) vem de
 `dados/malha-municipios-ibge.json` (IBGE, malha 2022, qualidade intermediária) e não precisa ser refeita.
 
 ## Ver localmente

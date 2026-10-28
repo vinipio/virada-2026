@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1c1c1c;--ink2:#555;--muted:#8a8a8a;--line:#e3e1dc;--soft:#f0eee9;
- --lula:#b8322a;--flavio:#2457b3;--neutro:#e9e7e2;--abst-up:#1f7a3a;--abst-dn:#d97706;--acc:#b8322a}
+ --lula:#b8322a;--flavio:#2457b3;--neutro:#e9e7e2;--acc:#1c1c1c}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 header{padding:18px 24px 10px;border-bottom:1px solid var(--line);background:var(--card)}
@@ -17,12 +17,18 @@ header p{margin:4px 0 0;color:var(--ink2);max-width:1100px}
 .wrap{display:grid;grid-template-columns:minmax(420px,1fr) minmax(460px,760px);gap:18px;padding:16px 24px;align-items:start}
 @media (max-width:1000px){.wrap{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px}
 .controls label{font-size:12px;color:var(--ink2);display:flex;flex-direction:column;gap:3px}
 select,input{font:inherit;padding:6px 8px;border:1px solid #cfcbc3;border-radius:6px;background:#fff;color:var(--ink)}
 input#busca{min-width:260px}
-button{font:inherit;padding:6px 10px;border:1px solid #cfcbc3;border-radius:6px;background:#fff;cursor:pointer}
+button{font:inherit;padding:6px 10px;border:1px solid #cfcbc3;border-radius:6px;background:#fff;cursor:pointer;color:var(--ink)}
 button:hover{background:var(--soft)}
+.seg{display:inline-flex;border:1px solid #cfcbc3;border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-right:1px solid #cfcbc3;padding:7px 12px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--acc);color:#fff}
+.recorte-box{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
+.recorte-nota{font-size:12px;color:var(--ink2);margin:0 0 8px}
 #mapa{width:100%;height:auto;display:block;background:#fbfaf8;border-radius:8px;border:1px solid var(--line);cursor:grab}
 #mapa path.mu{stroke:#fff;stroke-width:.25;vector-effect:non-scaling-stroke}
 #mapa path.mu:hover{stroke:#000;stroke-width:1.2}
@@ -31,7 +37,7 @@ button:hover{background:var(--soft)}
 .legenda{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--ink2);flex-wrap:wrap}
 .legenda .barra{height:12px;width:220px;border-radius:3px;border:1px solid var(--line)}
 .sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line)}
-.tip{position:fixed;pointer-events:none;background:#1c1c1c;color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;display:none;z-index:9;max-width:300px}
+.tip{position:fixed;pointer-events:none;background:#1c1c1c;color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;display:none;z-index:9;max-width:320px}
 h2{font-size:17px;margin:0 0 4px}
 h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);margin:18px 0 6px}
 .sub{color:var(--ink2);font-size:12.5px;margin:0 0 8px}
@@ -48,17 +54,20 @@ tr.tot td{font-weight:700;background:var(--soft)}
 .bar{height:14px;border-radius:4px;overflow:hidden;display:flex;background:var(--neutro);margin:6px 0}
 .bar div{height:100%}
 .pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;background:var(--soft);color:var(--ink2)}
+.pill.dark{background:var(--acc);color:#fff}
 .nota{font-size:11.5px;color:var(--muted);margin-top:6px}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0}
 .kv div{background:var(--soft);border-radius:8px;padding:8px 10px}
 .kv .k{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
 .kv .v{font-size:18px;font-weight:700}
 .tw{overflow-x:auto}
+.tw.alto{max-height:360px;overflow-y:auto}
 .pos{color:var(--lula)}.neg{color:var(--flavio)}
 .quartil-sel{margin:6px 0}
 footer{padding:10px 24px 24px;color:var(--muted);font-size:12px}
 a{color:inherit}
 .err{background:#fff4f2;border:1px solid #f1c7c2;padding:10px;border-radius:8px;color:#8a2a22}
+.aviso{background:#fbf6e9;border:1px solid #ecd9a3;padding:8px 10px;border-radius:8px;color:#6b4e00;font-size:12.5px;margin:8px 0}
 </style>
 </head>
 <body>
@@ -69,6 +78,13 @@ a{color:inherit}
 <div class="wrap">
  <div class="card">
   <div class="controls">
+   <div class="recorte-box">Urnas consideradas (hora de encerramento)
+    <div class="seg" id="recorte">
+     <button data-r="total" class="on">Total</button>
+     <button data-r="ate">Até 17h30</button>
+     <button data-r="apos">Após 17h30</button>
+    </div>
+   </div>
    <label>Colorir o mapa por
     <select id="metrica">
      <option value="lula_fatia_saldo">Fatia do saldo que foi para Lula (%)</option>
@@ -76,6 +92,7 @@ a{color:inherit}
      <option value="flavio_delta_pp">Δ Flávio, 1º → 2º turno (pp dos válidos)</option>
      <option value="abst_delta_pp">Δ abstenção, 1º → 2º turno (pp)</option>
      <option value="outros_pct_t1">Terceira via no 1º turno (% dos válidos)</option>
+     <option value="pror_pct">% das urnas do município encerradas após 17h30</option>
     </select></label>
    <label>UF <select id="uf"><option value="">Todas</option></select></label>
    <label>Município (digite para buscar)
@@ -83,9 +100,10 @@ a{color:inherit}
     <datalist id="lista"></datalist></label>
    <button id="limpar" title="Voltar ao Brasil">Brasil</button>
   </div>
+  <p class="recorte-nota" id="recorte-nota"></p>
   <svg id="mapa" viewBox="0 0 900 900"></svg>
   <div class="legenda" id="legenda"></div>
-  <p class="nota">Clique num município para abrir o detalhe; arraste e use a roda do mouse para navegar. Cinza: sem saldo positivo (ver detalhe) ou sem malha.</p>
+  <p class="nota">Clique num município para abrir o detalhe; arraste e use a roda do mouse para navegar. Cinza: sem valor no recorte (sem urna após 17h30, saldo não positivo ou sem malha).</p>
  </div>
  <div class="card" id="painel"><p class="sub">Carregando dados…</p></div>
 </div>
@@ -107,25 +125,38 @@ let R,M,T;
 try{
  [R,M,T]=await Promise.all(['dados/resumo.json','dados/municipios.json','dados/malha.json'].map(u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u+': '+r.status);return r.json()})));
 }catch(e){$('#painel').innerHTML=`<div class="err">Não consegui carregar os dados (${e.message}). Se você abriu o arquivo direto do disco, sirva a pasta por HTTP (ABRIR-SITE.cmd) ou publique no GitHub Pages.</div>`;return}
-const L=R.L,F=R.F,NM=R.nomes,N=R.nacional;
+const L=R.L,F=R.F,NM=R.nomes,N=R.nacional,PR=R.prorrogadas||{limite:'17:30',municipios:0,urnas:0,votantes:0};
 const nome=c=>({'70':'Cury','14':'Renan Santos','55':'Caiado','30':'Zema','80':'Samara','nanicos':'Demais candidatos','comparecimento':'Comparecimento extra','brancos':'Brancos → voto','nulos':'Nulos → voto','abstencao':'Abstenção'})[c]||cap(NM[c]||c);
 const byKey=new Map(M.map(m=>[m.uf+'|'+m.codigo,m]));
 const detalheCache={};
+for(const m of M)m.pror_pct=m.pror_n?100*m.pror_n/m.grupos:0;
+
+// ---------- recorte (total / até 17h30 / após 17h30) ----------
+let recorte='total';
+const ROT={total:'todas as urnas',ate:`urnas encerradas antes das ${PR.limite}`,apos:`urnas encerradas a partir das ${PR.limite}`};
+function leveRec(m){ // valores leves do município no recorte atual (null = fora do recorte)
+ if(recorte==='total')return m;
+ if(recorte==='ate')return m.ate===undefined?m:m.ate;   // sem urna prorrogada: "até" = total
+ return m.apos||null}
+function nacRec(){return recorte==='total'?N:R.recortes[recorte].nacional}
+function ufRec(uf){return recorte==='total'?R.ufs[uf]:(R.recortes[recorte].ufs[uf]||null)}
 
 $('#lead').textContent=`Nos mesmos ${f0(N.grupos)} grupos de seções do TSE, Lula foi de ${pc(N.lula_pct_t1)} para ${pc(N.lula_pct_t2)} dos válidos (${sg(N.delta_lula)} votos) e Flávio de ${pc(N.flavio_pct_t1)} para ${pc(N.flavio_pct_t2)} (${sg(N.delta_flavio)}). Havia ${f0(N.saldo)} votos "em jogo" (saldo) e Lula ficou com ${f1(N.lula_fatia_saldo)}% deles. Dados: boletins de urna do TSE, comparados seção a seção; base gerada em ${new Date(R.gerado_em).toLocaleString('pt-BR')}.`;
-$('#rodape').innerHTML=`Metodologia: o <b>saldo</b> de um recorte é outros candidatos do 1º turno − Δbrancos − Δnulos + Δcomparecimento, e por identidade contábil é igual a ΔLula + ΔFlávio em cada seção. A <b>regressão ecológica</b> (sem intercepto, por grupo de seções) estima a fração de cada fonte que foi para Lula; é associação entre seções, não rastreamento de eleitores, e só é calculada em municípios com ≥ ${R.min_grupos} grupos (${f0(R.municipios_com_regressao)} municípios). Os <b>quartis</b> não usam modelo: ordenam as seções pela fatia da fonte no 1º turno, cortam em quatro blocos e somam o que aconteceu em cada um (≥ 20 grupos; ${f0(R.municipios_com_quartis)} municípios). ${f0(M.length)} municípios (incluindo ${f0(M.filter(m=>m.uf==='ZZ').length)} do exterior, sem mapa).`;
+$('#rodape').innerHTML=`Metodologia: o <b>saldo</b> de um recorte é outros candidatos do 1º turno − Δbrancos − Δnulos + Δcomparecimento, e por identidade contábil é igual a ΔLula + ΔFlávio em cada seção. A <b>regressão ecológica</b> (sem intercepto, por grupo de seções) estima a fração de cada fonte que foi para Lula; é associação entre seções, não rastreamento de eleitores, e só é calculada em recortes com ≥ ${R.min_grupos} grupos (${f0(R.municipios_com_regressao)} municípios no total). Os <b>quartis</b> não usam modelo: ordenam as seções pela fatia da fonte no 1º turno, cortam em quatro blocos e somam o que aconteceu em cada um (≥ 20 grupos; ${f0(R.municipios_com_quartis)} municípios). <b>Urnas após ${PR.limite}</b>: hora de encerramento registrada no boletim de urna do 2º turno; ${f0(PR.urnas)} urnas em ${f0(PR.municipios)} municípios, ${f0(PR.votantes)} votantes — os botões "Até/Após ${PR.limite}" refazem balanço, regressão e quartis só com as urnas de cada bloco. ${f0(M.length)} municípios (incluindo ${f0(M.filter(m=>m.uf==='ZZ').length)} do exterior, sem mapa). Percentuais de candidatos sempre sobre os votos válidos.`;
 
 // ---------- métricas e cores ----------
 const METR={
- lula_fatia_saldo:{dom:[0,50,100],cores:['var(--flavio)','var(--neutro)','var(--lula)'],hex:['#2457b3','#e9e7e2','#b8322a'],fmt:v=>f1(v)+'%',rot:['0% (tudo p/ Flávio)','50%','100% (tudo p/ Lula)'],txt:'Fatia do saldo para Lula'},
- lula_delta_pp:{dom:[-10,0,10],hex:['#2457b3','#e9e7e2','#b8322a'],fmt:v=>sg1(v)+' pp',rot:['−10 pp','0','+10 pp'],txt:'Δ Lula (pp dos válidos)'},
- flavio_delta_pp:{dom:[-10,0,10],hex:['#b8322a','#e9e7e2','#2457b3'],fmt:v=>sg1(v)+' pp',rot:['−10 pp','0','+10 pp'],txt:'Δ Flávio (pp dos válidos)'},
- abst_delta_pp:{dom:[-6,0,6],hex:['#d97706','#e9e7e2','#1f7a3a'],fmt:v=>sg1(v)+' pp',rot:['−6 pp (abstenção caiu)','0','+6 pp (subiu)'],txt:'Δ abstenção (pp)'},
- outros_pct_t1:{dom:[0,8,16],hex:['#f3efe6','#9c8a5a','#3d3420'],fmt:v=>f1(v)+'%',rot:['0%','8%','16%+'],txt:'Terceira via no 1º turno'},
+ lula_fatia_saldo:{dom:[0,50,100],hex:['#2457b3','#e9e7e2','#b8322a'],fmt:v=>f1(v)+'%',rot:['0% (tudo p/ Flávio)','100% (tudo p/ Lula)'],txt:'Fatia do saldo para Lula'},
+ lula_delta_pp:{dom:[-10,0,10],hex:['#2457b3','#e9e7e2','#b8322a'],fmt:v=>sg1(v)+' pp',rot:['−10 pp','+10 pp'],txt:'Δ Lula (pp dos válidos)'},
+ flavio_delta_pp:{dom:[-10,0,10],hex:['#b8322a','#e9e7e2','#2457b3'],fmt:v=>sg1(v)+' pp',rot:['−10 pp','+10 pp'],txt:'Δ Flávio (pp dos válidos)'},
+ abst_delta_pp:{dom:[-6,0,6],hex:['#d97706','#e9e7e2','#1f7a3a'],fmt:v=>sg1(v)+' pp',rot:['−6 pp (abstenção caiu)','+6 pp (subiu)'],txt:'Δ abstenção (pp)'},
+ outros_pct_t1:{dom:[0,8,16],hex:['#f3efe6','#9c8a5a','#3d3420'],fmt:v=>f1(v)+'%',rot:['0%','16%+'],txt:'Terceira via no 1º turno'},
+ pror_pct:{dom:[0,25,50],hex:['#f3efe6','#b77a2a','#4a2a05'],fmt:v=>f1(v)+'%',rot:['0%','50%+'],txt:`Urnas após ${PR.limite} (% das urnas)`,semRecorte:true},
 };
 let metrica='lula_fatia_saldo';
 function escala(){const m=METR[metrica];return d3.scaleLinear().domain(m.dom).range(m.hex).interpolate(d3.interpolateLab).clamp(true)}
-function corDe(d){const v=d[metrica];return v==null?'#cfcbc3':escala()(v)}
+function valor(m){if(METR[metrica].semRecorte)return m[metrica];const r=leveRec(m);return r?r[metrica]:null}
+function corDe(m){const v=valor(m);return v==null?'#cfcbc3':escala()(v)}
 
 // ---------- mapa ----------
 const svg=d3.select('#mapa'),W=900,H=900;
@@ -135,17 +166,27 @@ const proj=d3.geoMercator().fitExtent([[10,10],[W-10,H-10]],{type:'FeatureCollec
 const path=d3.geoPath(proj);
 const tip=$('#tip');
 const paths=g.selectAll('path.mu').data(feats).join('path').attr('class','mu').attr('d',path)
- .on('mousemove',(ev,d)=>{const m=byKey.get(d.id);if(!m)return;tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';
-   tip.innerHTML=`<b>${cap(m.nome)} / ${m.uf}</b><br>${METR[metrica].txt}: ${m[metrica]==null?'—':METR[metrica].fmt(m[metrica])}<br>Lula ${pc(m.lula_pct_t1)} → ${pc(m.lula_pct_t2)} (${sg(m.delta_lula)})<br>Flávio ${pc(m.flavio_pct_t1)} → ${pc(m.flavio_pct_t2)} (${sg(m.delta_flavio)})<br>Saldo ${sg(m.saldo)} · ${m.grupos} grupos`})
+ .on('mousemove',(ev,d)=>{const m=byKey.get(d.id);if(!m)return;const r=leveRec(m);tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';
+   let h=`<b>${cap(m.nome)} / ${m.uf}</b>`;
+   if(m.pror_n)h+=`<br>${f0(m.pror_n)} de ${f0(m.grupos)} urnas após ${PR.limite} (${f1(m.pror_pct)}%)`;
+   if(recorte!=='total')h+=`<br><i>${ROT[recorte]}${r?` — ${f0(r.grupos)} grupos`:''}</i>`;
+   if(r)h+=`<br>${METR[metrica].txt}: ${valor(m)==null?'—':METR[metrica].fmt(valor(m))}<br>Lula ${pc(r.lula_pct_t1)} → ${pc(r.lula_pct_t2)} (${sg(r.delta_lula)})<br>Flávio ${pc(r.flavio_pct_t1)} → ${pc(r.flavio_pct_t2)} (${sg(r.delta_flavio)})<br>Saldo ${sg(r.saldo)}`;
+   else h+=`<br>Sem urna encerrada após ${PR.limite}`;
+   tip.innerHTML=h})
  .on('mouseleave',()=>tip.style.display='none')
  .on('click',(ev,d)=>selecionar(d.id));
 g.append('path').attr('class','uf').attr('d',path(topojson.mesh(T,T.objects.mun,(a,b)=>a.properties.uf!==b.properties.uf)));
 svg.call(d3.zoom().scaleExtent([1,40]).on('zoom',ev=>g.attr('transform',ev.transform)));
-function pintar(){paths.attr('fill',d=>{const m=byKey.get(d.id);return m?corDe(m):'#cfcbc3'});legenda()}
+function pintar(){paths.attr('fill',d=>{const m=byKey.get(d.id);return m?corDe(m):'#cfcbc3'});legenda();notaRecorte()}
 function legenda(){const m=METR[metrica];const s=escala();const stops=d3.range(0,1.001,.1).map(t=>s(m.dom[0]+t*(m.dom[2]-m.dom[0])));
- $('#legenda').innerHTML=`<span>${m.rot[0]}</span><div class="barra" style="background:linear-gradient(90deg,${stops.join(',')})"></div><span>${m.rot[2]}</span><span style="margin-left:10px"><span class="sw" style="background:#cfcbc3"></span>sem valor</span>`}
+ $('#legenda').innerHTML=`<span>${m.rot[0]}</span><div class="barra" style="background:linear-gradient(90deg,${stops.join(',')})"></div><span>${m.rot[1]}</span><span style="margin-left:10px"><span class="sw" style="background:#cfcbc3"></span>sem valor</span>`}
+function notaRecorte(){const n=nacRec();const com=M.filter(m=>leveRec(m)).length;
+ $('#recorte-nota').innerHTML=recorte==='total'?`<b>Total</b>: ${f0(n.grupos)} grupos de seções em ${f0(M.length)} municípios.`:
+  recorte==='ate'?`<b>Até ${PR.limite}</b>: ${f0(n.grupos)} grupos (${f0(N.grupos-n.grupos)} urnas retiradas, em ${f0(PR.municipios)} municípios). Lula ${pc(n.lula_pct_t1)} → ${pc(n.lula_pct_t2)}; fatia do saldo ${f1(n.lula_fatia_saldo)}%.`:
+  `<b>Após ${PR.limite}</b>: ${f0(n.grupos)} urnas em ${f0(com)} municípios, ${f0(n.comparecimento_t2)} votantes. Lula ${pc(n.lula_pct_t1)} → ${pc(n.lula_pct_t2)}; fatia do saldo ${f1(n.lula_fatia_saldo)}%. Os demais municípios ficam em cinza.`}
 pintar();
 $('#metrica').onchange=e=>{metrica=e.target.value;pintar()};
+document.querySelectorAll('#recorte button').forEach(b=>b.onclick=()=>{recorte=b.dataset.r;document.querySelectorAll('#recorte button').forEach(x=>x.classed=x.classList.toggle('on',x===b));pintar();if(selecionado)selecionar(selecionado);else painelBrasil()});
 
 // ---------- busca ----------
 const ufs=[...new Set(M.map(m=>m.uf))].sort();
@@ -168,7 +209,7 @@ async function selecionar(key){const m=byKey.get(key);if(!m)return;selecionado=k
  history.replaceState(null,'',`#${m.uf}-${m.codigo}`);
  $('#painel').innerHTML='<p class="sub">Carregando detalhe…</p>';
  if(!detalheCache[m.uf]){try{detalheCache[m.uf]=await fetch(`dados/detalhe/${m.uf}.json`).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})}catch(e){$('#painel').innerHTML=`<div class="err">Não consegui carregar dados/detalhe/${m.uf}.json (${e.message}).</div>`;return}}
- painelMunicipio(detalheCache[m.uf][m.codigo])}
+ if(selecionado===key)painelMunicipio(detalheCache[m.uf][m.codigo])}
 
 function tabelaTurnos(d){
  const outros=Object.keys(NM).filter(c=>c!==L&&c!==F).map(c=>({c,v:d['c'+c+'_t1']||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
@@ -195,13 +236,13 @@ function blocoSaldo(d){
  else h+=`<p class="sub">Saldo ≤ 0: o comparecimento caiu mais do que a terceira via e brancos/nulos liberaram. Nesse caso a "fatia do saldo" não é definida; leia os Δ em votos — ${d.delta_flavio<0?'Flávio perdeu votos absolutos':'Lula perdeu votos absolutos'} e a abstenção foi de ${pc(d.taxa_abst_t1)} para ${pc(d.taxa_abst_t2)}.</p>`;
  return h}
 
-function tabelaRegressao(r,cmpUF,cmpBR,ufSigla){
+function tabelaRegressao(r,cmpUF,cmpBR,ufSigla,rotUF,rotBR){
  const ordem=[...R.grandes,'nanicos','comparecimento','brancos','nulos'].filter(c=>r.fontes[c]);
- let h=`<div class="tw"><table><tr><th class="l">Fonte</th><th>Em jogo</th><th>→ Lula</th><th>±2 e.p.</th><th>→ Flávio</th><th>≈ votos p/ Lula</th>${cmpUF?`<th>${ufSigla} (ef. fixos)</th>`:''}<th>Brasil (ef. fixos)</th></tr>`;
+ let h=`<div class="tw"><table><tr><th class="l">Fonte</th><th>Em jogo</th><th>→ Lula</th><th>±2 e.p.</th><th>→ Flávio</th><th>≈ votos p/ Lula</th>${cmpUF?`<th>${rotUF}</th>`:''}${cmpBR?`<th>${rotBR}</th>`:''}</tr>`;
  for(const c of ordem){const v=r.fontes[c];const inst=v.ep2>0.5||Math.abs(v.total)<50;
-  h+=`<tr><td class="l">${nome(c)}</td><td>${f0(v.total)}</td><td><b>${Math.round(100*v.beta)}%</b></td><td class="${inst?"neg":""}">±${f1(100*v.ep2)}</td><td>${Math.round(100*(1-v.beta))}%</td><td>${f0(v.beta*v.total)}</td>${cmpUF?`<td>${cmpUF.fontes[c]?Math.round(100*cmpUF.fontes[c].beta)+'%':'—'}</td>`:''}<td>${cmpBR.fontes[c]?Math.round(100*cmpBR.fontes[c].beta)+'%':'—'}</td></tr>`}
- h+=`<tr class="tot"><td class="l">Soma das estimativas</td><td></td><td></td><td></td><td></td><td>${f0(r.lula_estimado)}</td>${cmpUF?'<td></td>':''}<td></td></tr></table></div>`;
- h+=`<p class="nota">${f0(r.n)} grupos de seções, R² ${f2(r.r2)}. Estimado ${f0(r.lula_estimado)} contra ${f0(r.lula_observado)} observados para Lula. Frações acima de 100% ou abaixo de 0% e erros-padrão grandes (em azul) indicam fonte pequena demais para o modelo separar; o balanço acima não depende disso. Colunas de comparação: regressão com efeitos fixos de município da UF e do Brasil.</p>`;
+  h+=`<tr><td class="l">${nome(c)}</td><td>${f0(v.total)}</td><td><b>${Math.round(100*v.beta)}%</b></td><td class="${inst?'neg':''}">±${f1(100*v.ep2)}</td><td>${Math.round(100*(1-v.beta))}%</td><td>${f0(v.beta*v.total)}</td>${cmpUF?`<td>${cmpUF.fontes[c]?Math.round(100*cmpUF.fontes[c].beta)+'%':'—'}</td>`:''}${cmpBR?`<td>${cmpBR.fontes[c]?Math.round(100*cmpBR.fontes[c].beta)+'%':'—'}</td>`:''}</tr>`}
+ h+=`<tr class="tot"><td class="l">Soma das estimativas</td><td></td><td></td><td></td><td></td><td>${f0(r.lula_estimado)}</td>${cmpUF?'<td></td>':''}${cmpBR?'<td></td>':''}</tr></table></div>`;
+ h+=`<p class="nota">${f0(r.n)} grupos de seções, R² ${f2(r.r2)}. Estimado ${f0(r.lula_estimado)} contra ${f0(r.lula_observado)} observados para Lula. Frações acima de 100% ou abaixo de 0% e erros-padrão grandes (em azul) indicam fonte pequena demais para o modelo separar; o balanço acima não depende disso.</p>`;
  return h}
 
 function tabelaQuartis(qs,variavel){
@@ -214,6 +255,8 @@ function cards(d){return `<div class="cards">
  <div class="cand" style="border-left-color:var(--lula)"><div class="nm">Lula</div><div class="big">${pc(d.lula_pct_t2)}</div><div class="d">${pc(d.lula_pct_t1)} no 1º turno · ${sg1(d.lula_delta_pp)} pp · ${sg(d.delta_lula)} votos</div></div>
  <div class="cand" style="border-left-color:var(--flavio)"><div class="nm">Flávio Bolsonaro</div><div class="big">${pc(d.flavio_pct_t2)}</div><div class="d">${pc(d.flavio_pct_t1)} no 1º turno · ${sg1(d.flavio_delta_pp)} pp · ${sg(d.delta_flavio)} votos</div></div></div>`}
 
+function kv(d){return `<div class="kv"><div><div class="k">Saldo em jogo</div><div class="v">${sg(d.saldo)}</div></div><div><div class="k">Fatia do saldo → Lula</div><div class="v">${d.lula_fatia_saldo==null?'—':f1(d.lula_fatia_saldo)+'%'}</div></div><div><div class="k">Flávio na disputa, 1º t.</div><div class="v">${f1(d.flavio_fatia_t1_disputa)}%</div></div><div><div class="k">Δ abstenção</div><div class="v">${d.taxa_abst_t1==null||d.taxa_abst_t2==null?'—':sg1(d.taxa_abst_t2-d.taxa_abst_t1)+' pp'}</div></div></div>`}
+
 function secaoQuartis(Q,id){
  const vars=R.variaveis_quartis.filter(v=>Q[v]);if(!vars.length)return '';
  const h=`<h3>Quartis — sem modelo</h3><p class="sub">Seções ordenadas pela fatia da fonte no 1º turno e cortadas em quatro blocos iguais; em cada bloco, o que aconteceu. Se Lula cresce mais onde a fonte era mais forte, é fato observado, não estimativa.</p>
@@ -221,33 +264,64 @@ function secaoQuartis(Q,id){
  setTimeout(()=>{const s=document.getElementById(id);if(s)s.onchange=e=>document.getElementById(id+'-t').innerHTML=tabelaQuartis(Q[e.target.value],e.target.value)},0);
  return h}
 
-function painelMunicipio(d){
- const m=byKey.get(d.uf+'|'+d.codigo);const U=R.ufs[d.uf];const cUF=R.coeficientes['UF '+d.uf],cBR=R.coeficientes['Brasil (intra-município)'];
- let h=`<h2>${cap(d.municipio)} <span class="pill">${d.uf}${d.regiao?' · '+d.regiao:''}</span></h2><p class="sub">${f0(d.grupos)} grupos de seções comparáveis entre os turnos · ${f0(d.aptos_t2)} aptos${d.ibge?'':' · <b>sem malha no mapa</b>'}</p>`;
- h+=cards(d);
- h+=`<div class="kv"><div><div class="k">Saldo em jogo</div><div class="v">${sg(d.saldo)}</div></div><div><div class="k">Fatia do saldo → Lula</div><div class="v">${d.lula_fatia_saldo==null?'—':f1(d.lula_fatia_saldo)+'%'}</div></div><div><div class="k">Flávio na disputa, 1º t.</div><div class="v">${f1(d.flavio_fatia_t1_disputa)}%</div></div><div><div class="k">Δ abstenção</div><div class="v">${sg1(d.taxa_abst_t2-d.taxa_abst_t1)} pp</div></div></div>`;
- if(U)h+=`<p class="sub">Comparação: na UF (${d.uf}) Lula ficou com ${U.lula_fatia_saldo==null?'—':f1(U.lula_fatia_saldo)+'%'} do saldo e cresceu ${sg1(U.lula_delta_pp)} pp; no Brasil, ${f1(N.lula_fatia_saldo)}% e ${sg1(N.lula_delta_pp)} pp.</p>`;
+function tabelaUrnas(us){
+ if(!us||!us.length)return '';
+ let h=`<div class="tw alto"><table><tr><th>Zona</th><th>Seção(ões)</th><th>Abertura</th><th>Encerr.</th><th>Emissão</th><th>Aptos</th><th>Votantes 1º</th><th>Votantes 2º</th><th>Lula 1º</th><th>Lula 2º</th><th>Flávio 1º</th><th>Flávio 2º</th></tr>`;
+ for(const u of us)h+=`<tr><td>${u.zona}</td><td>${u.secao}</td><td>${u.abertura||'—'}</td><td><b>${u.encerramento||'—'}</b></td><td>${u.emissao||'—'}</td><td>${f0(u.aptos2)}</td><td>${f0(u.comp1)}</td><td>${f0(u.comp2)}</td><td>${f0(u.l1)}</td><td>${f0(u.l2)}</td><td>${f0(u.f1)}</td><td>${f0(u.f2)}</td></tr>`;
+ return h+'</table></div><p class="nota">Uma linha por urna (grupo de seções agregadas no boletim). Horários registrados no boletim de urna do 2º turno; "Lula/Flávio 1º" são os votos do mesmo grupo no 1º turno.</p>'}
+
+function cabRecorte(d,tot){ // faixa explicando o recorte no painel
+ if(recorte==='total')return '';
+ if(recorte==='ate')return `<div class="aviso"><b>Recorte: até ${PR.limite}</b> — ${f0(d.grupos)} de ${f0(tot.grupos)} grupos${tot.grupos-d.grupos?` (${f0(tot.grupos-d.grupos)} urnas encerradas após ${PR.limite} retiradas)`:' (nenhuma urna encerrou após o horário; igual ao total)'}.</div>`;
+ return `<div class="aviso"><b>Recorte: após ${PR.limite}</b> — ${f0(d.grupos)} de ${f0(tot.grupos)} grupos (${f1(100*d.grupos/tot.grupos)}% das urnas), ${f0(d.comparecimento_t2)} votantes. Balanço, regressão e quartis abaixo usam só essas urnas.</div>`}
+
+function painelMunicipio(dt){
+ const m=byKey.get(dt.uf+'|'+dt.codigo);
+ let d=dt;
+ if(recorte!=='total'){const rc=dt.recortes;d=recorte==='ate'?(rc&&rc.ate!==undefined?rc.ate:dt):(rc?rc.apos:null)}
+ let h=`<h2>${cap(dt.municipio)} <span class="pill">${dt.uf}${dt.regiao?' · '+dt.regiao:''}</span>${recorte!=='total'?` <span class="pill dark">${recorte==='ate'?'até':'após'} ${PR.limite}</span>`:''}</h2><p class="sub">${f0(dt.grupos)} grupos de seções comparáveis entre os turnos · ${f0(dt.aptos_t2)} aptos${dt.ibge?'':' · <b>sem malha no mapa</b>'}${m.pror_n?` · <b>${f0(m.pror_n)} urnas encerradas após ${PR.limite}</b> (${f1(m.pror_pct)}%)`:` · nenhuma urna encerrada após ${PR.limite}`}</p>`;
+ if(!d){h+=`<div class="aviso">Este município não tem urna encerrada após ${PR.limite}; não há recorte para mostrar. Escolha "Total" ou "Até ${PR.limite}".</div>`;
+  if(dt.urnas_prorrogadas.length)h+='<h3>Urnas</h3>'+tabelaUrnas(dt.urnas_prorrogadas);$('#painel').innerHTML=h;return}
+ h+=cabRecorte(d,dt);
+ h+=cards(d)+kv(d);
+ const U=ufRec(dt.uf),nac=nacRec();
+ if(U)h+=`<p class="sub">Comparação (${ROT[recorte]}): na UF (${dt.uf}) Lula ficou com ${U.lula_fatia_saldo==null?'—':f1(U.lula_fatia_saldo)+'%'} do saldo e cresceu ${sg1(U.lula_delta_pp)} pp; no Brasil, ${f1(nac.lula_fatia_saldo)}% e ${sg1(nac.lula_delta_pp)} pp.</p>`;
+ if(recorte!=='total'&&dt.recortes){const a=dt.recortes.ate,b=dt.recortes.apos;
+  h+=`<h3>Até × após ${PR.limite} neste município</h3><div class="tw"><table><tr><th class="l">Bloco</th><th>Grupos</th><th>Votantes 2º</th><th>Lula 1º → 2º</th><th>Δ Lula</th><th>Flávio 1º → 2º</th><th>Δ Flávio</th><th>Saldo → Lula</th><th>Δ abst.</th></tr>${[['Total',dt],['Até '+PR.limite,a],['Após '+PR.limite,b]].filter(x=>x[1]).map(([r,v])=>`<tr><td class="l">${r}</td><td>${f0(v.grupos)}</td><td>${f0(v.comparecimento_t2)}</td><td>${pc(v.lula_pct_t1)} → ${pc(v.lula_pct_t2)}</td><td><b>${sg1(v.lula_delta_pp)} pp</b></td><td>${pc(v.flavio_pct_t1)} → ${pc(v.flavio_pct_t2)}</td><td>${sg1(v.flavio_delta_pp)} pp</td><td>${v.lula_fatia_saldo==null?'—':f1(v.lula_fatia_saldo)+'%'}</td><td>${v.taxa_abst_t1==null?'—':sg1(v.taxa_abst_t2-v.taxa_abst_t1)+' pp'}</td></tr>`).join('')}</table></div>`}
  h+='<h3>1º × 2º turno</h3>'+tabelaTurnos(d);
  h+='<h3>Balanço: de onde saiu, para onde foi</h3>'+blocoSaldo(d);
  h+='<h3>Regressão ecológica — fração de cada fonte que foi para Lula</h3>';
- if(d.regressao)h+=tabelaRegressao(d.regressao,cUF,cBR,d.uf);
- else h+=`<p class="sub">Município com ${f0(d.grupos)} grupos — abaixo do mínimo de ${R.min_grupos} para uma regressão própria. Referência: coeficientes da UF ${d.uf}${cUF?` (${[...R.grandes.slice(0,3),'comparecimento','brancos','nulos'].filter(c=>cUF.fontes[c]).map(c=>`${nome(c)} ${Math.round(100*cUF.fontes[c].beta)}%`).join(', ')})`:''} e do Brasil (${[...R.grandes.slice(0,3),'comparecimento','brancos','nulos'].map(c=>`${nome(c)} ${Math.round(100*cBR.fontes[c].beta)}%`).join(', ')}).</p>`;
+ const cUF=recorte==='total'?R.coeficientes['UF '+dt.uf]:null,cBR=recorte==='total'?R.coeficientes['Brasil (intra-município)']:nac.regressao;
+ if(d.regressao)h+=tabelaRegressao(d.regressao,cUF,cBR,dt.uf,`${dt.uf} (ef. fixos)`,recorte==='total'?'Brasil (ef. fixos)':`Brasil, ${recorte==='ate'?'até':'após'} ${PR.limite}`);
+ else h+=`<p class="sub">${f0(d.grupos)} grupos neste recorte — abaixo do mínimo de ${R.min_grupos} para uma regressão própria.${cBR?` Referência (${recorte==='total'?'Brasil, efeitos fixos':'Brasil, '+ROT[recorte]}): ${[...R.grandes.slice(0,3),'comparecimento','brancos','nulos'].filter(c=>cBR.fontes[c]).map(c=>`${nome(c)} ${Math.round(100*cBR.fontes[c].beta)}%`).join(', ')}.`:''}</p>`;
  h+=secaoQuartis(d.quartis||{},'qsel');
- if(!Object.keys(d.quartis||{}).length)h+=`<p class="nota">Sem quartis: menos de 20 grupos de seções.</p>`;
+ if(!Object.keys(d.quartis||{}).length)h+=`<p class="nota">Sem quartis: menos de 20 grupos de seções neste recorte.</p>`;
+ if(dt.urnas_prorrogadas.length)h+=`<h3>Urnas encerradas após ${PR.limite} (${f0(dt.urnas_prorrogadas.length)})</h3>`+tabelaUrnas(dt.urnas_prorrogadas);
  $('#painel').innerHTML=h}
 
 function painelBrasil(){
- const cBR=R.coeficientes['Brasil (intra-município)'],cN=R.coeficientes['Brasil (nacional, sem efeitos fixos)'],RM=R.resumo_municipal,CV=R.validacao_cruzada;
- let h=`<h2>Brasil + exterior</h2><p class="sub">${f0(N.grupos)} grupos de seções · selecione um município no mapa ou na busca para ver o detalhe dele.</p>`;
- h+=cards(N);
- h+=`<div class="kv"><div><div class="k">Saldo em jogo</div><div class="v">${sg(N.saldo)}</div></div><div><div class="k">Fatia do saldo → Lula</div><div class="v">${f1(N.lula_fatia_saldo)}%</div></div><div><div class="k">Flávio na disputa, 1º t.</div><div class="v">${f1(N.flavio_fatia_t1_disputa)}%</div></div><div><div class="k">Δ abstenção</div><div class="v">${sg1(N.taxa_abst_t2-N.taxa_abst_t1)} pp</div></div></div>`;
- h+='<h3>Balanço nacional</h3>'+blocoSaldo(N);
- h+=`<h3>Regressão ecológica — Brasil</h3><p class="sub">Efeitos fixos de município (compara seções dentro da mesma cidade, ${f0(cBR.efeitos_fixos)} municípios) e, para comparação, o modelo nacional sem efeitos fixos.</p>`;
- const ordem=[...R.grandes,'nanicos','comparecimento','brancos','nulos'];
- h+=`<div class="tw"><table><tr><th class="l">Fonte</th><th>Em jogo</th><th>→ Lula (ef. fixos)</th><th>±2 e.p.</th><th>→ Lula (nacional)</th><th>≈ votos p/ Lula</th></tr>${ordem.map(c=>{const b=cBR.fontes[c],a=cN.fontes[c];return `<tr><td class="l">${nome(c)}</td><td>${f0(b.total)}</td><td><b>${Math.round(100*b.beta)}%</b></td><td>±${f1(100*b.ep2)}</td><td>${Math.round(100*a.beta)}%</td><td>${f0(b.beta*b.total)}</td></tr>`}).join('')}<tr class="tot"><td class="l">Soma das estimativas</td><td></td><td></td><td></td><td></td><td>${f0(cBR.lula_estimado)}</td></tr></table></div><p class="nota">Observado: ${f0(cBR.lula_observado)}. R² ${f2(cBR.r2)} (ef. fixos) e ${f2(cN.r2)} (nacional). Validação cruzada do modelo nacional (ajuste numa metade dos municípios, previsão na outra): ${Object.values(CV).filter(Boolean).map(v=>`${f0(v.estimado)} previstos vs ${f0(v.observado)} observados (erro médio por município ${f1(v.erro_abs_medio_pct)}%)`).join('; ')}.</p>`;
- h+=`<h3>Por região</h3><div class="tw"><table><tr><th class="l">Região</th><th>Δ Lula (pp)</th><th>Δ Flávio (pp)</th><th>Saldo</th><th>→ Lula</th><th>Cury → Lula</th><th>Renan → Lula</th><th>Caiado → Lula</th><th>Compar. → Lula</th></tr>${Object.entries(R.regioes).sort((a,b)=>(b[1].lula_fatia_saldo||0)-(a[1].lula_fatia_saldo||0)).map(([r,v])=>{const c=R.coeficientes['Região '+r];const b=k=>c&&c.fontes[k]?Math.round(100*c.fontes[k].beta)+'%':'—';return `<tr><td class="l">${r}</td><td>${sg1(v.lula_delta_pp)}</td><td>${sg1(v.flavio_delta_pp)}</td><td>${sg(v.saldo)}</td><td><b>${v.lula_fatia_saldo==null?'—':f1(v.lula_fatia_saldo)+'%'}</b></td><td>${b('70')}</td><td>${b('14')}</td><td>${b('55')}</td><td>${b('comparecimento')}</td></tr>`}).join('')}</table></div>`;
- h+=`<h3>Município a município</h3><p class="sub">Lula ganhou pontos em ${f0(RM.lula_cresceu_pp)} dos ${f0(RM.n_municipios)} municípios e levou a maior parte do saldo em ${f0(RM.lula_maioria_saldo)}; Flávio perdeu votos absolutos em ${f0(RM.flavio_perdeu_votos)}. Nos ${f0(RM.com_regressao)} municípios com regressão própria: ${Object.entries(RM.fontes).map(([c,v])=>`${nome(c)} mediana ${Math.round(100*v.mediana)}% (quartis ${Math.round(100*v.q1)}–${Math.round(100*v.q3)}%; acima de 50% em ${Math.round(v.pct_maioria_lula)}% das cidades)`).join('; ')}.</p>`;
- h+=secaoQuartis(R.quartis['Brasil'],'qbr');
+ const n=nacRec();
+ let h=`<h2>Brasil + exterior${recorte!=='total'?` <span class="pill dark">${recorte==='ate'?'até':'após'} ${PR.limite}</span>`:''}</h2><p class="sub">${f0(n.grupos)} grupos de seções${recorte==='apos'?` em ${f0(PR.municipios)} municípios`:''} · selecione um município no mapa ou na busca para ver o detalhe dele.</p>`;
+ if(recorte!=='total')h+=cabRecorte(n,N);
+ h+=cards(n)+kv(n);
+ if(recorte!=='total'){const a=R.recortes.ate.nacional,b=R.recortes.apos.nacional;
+  h+=`<h3>Total × até × após ${PR.limite}</h3><div class="tw"><table><tr><th class="l">Bloco</th><th>Grupos</th><th>Votantes 2º</th><th>Lula 1º → 2º</th><th>Δ Lula</th><th>Flávio 1º → 2º</th><th>Δ Flávio</th><th>Saldo → Lula</th><th>Δ abst.</th></tr>${[['Total',N],['Até '+PR.limite,a],['Após '+PR.limite,b]].map(([r,v])=>`<tr><td class="l">${r}</td><td>${f0(v.grupos)}</td><td>${f0(v.comparecimento_t2)}</td><td>${pc(v.lula_pct_t1)} → ${pc(v.lula_pct_t2)}</td><td><b>${sg1(v.lula_delta_pp)} pp</b></td><td>${pc(v.flavio_pct_t1)} → ${pc(v.flavio_pct_t2)}</td><td>${sg1(v.flavio_delta_pp)} pp</td><td>${f1(v.lula_fatia_saldo)}%</td><td>${sg1(v.taxa_abst_t2-v.taxa_abst_t1)} pp</td></tr>`).join('')}</table></div><p class="nota">As urnas após ${PR.limite} estão concentradas em capitais e regiões metropolitanas (RJ, SP, Salvador, Recife…), onde o perfil do eleitorado já difere do resto do país — comparar com a própria cidade (painel do município) é mais informativo do que com o Brasil.</p>`}
+ h+='<h3>Balanço</h3>'+blocoSaldo(n);
+ if(recorte==='total'){
+  const cBR=R.coeficientes['Brasil (intra-município)'],cN=R.coeficientes['Brasil (nacional, sem efeitos fixos)'],RM=R.resumo_municipal,CV=R.validacao_cruzada;
+  h+=`<h3>Regressão ecológica — Brasil</h3><p class="sub">Efeitos fixos de município (compara seções dentro da mesma cidade, ${f0(cBR.efeitos_fixos)} municípios) e, para comparação, o modelo nacional sem efeitos fixos.</p>`;
+  const ordem=[...R.grandes,'nanicos','comparecimento','brancos','nulos'];
+  h+=`<div class="tw"><table><tr><th class="l">Fonte</th><th>Em jogo</th><th>→ Lula (ef. fixos)</th><th>±2 e.p.</th><th>→ Lula (nacional)</th><th>≈ votos p/ Lula</th></tr>${ordem.map(c=>{const b=cBR.fontes[c],a=cN.fontes[c];return `<tr><td class="l">${nome(c)}</td><td>${f0(b.total)}</td><td><b>${Math.round(100*b.beta)}%</b></td><td>±${f1(100*b.ep2)}</td><td>${Math.round(100*a.beta)}%</td><td>${f0(b.beta*b.total)}</td></tr>`}).join('')}<tr class="tot"><td class="l">Soma das estimativas</td><td></td><td></td><td></td><td></td><td>${f0(cBR.lula_estimado)}</td></tr></table></div><p class="nota">Observado: ${f0(cBR.lula_observado)}. R² ${f2(cBR.r2)} (ef. fixos) e ${f2(cN.r2)} (nacional). Validação cruzada do modelo nacional (ajuste numa metade dos municípios, previsão na outra): ${Object.values(CV).filter(Boolean).map(v=>`${f0(v.estimado)} previstos vs ${f0(v.observado)} observados (erro médio por município ${f1(v.erro_abs_medio_pct)}%)`).join('; ')}.</p>`;
+  h+=`<h3>Por região</h3><div class="tw"><table><tr><th class="l">Região</th><th>Δ Lula (pp)</th><th>Δ Flávio (pp)</th><th>Saldo</th><th>→ Lula</th><th>Cury → Lula</th><th>Renan → Lula</th><th>Caiado → Lula</th><th>Compar. → Lula</th></tr>${Object.entries(R.regioes).sort((a,b)=>(b[1].lula_fatia_saldo||0)-(a[1].lula_fatia_saldo||0)).map(([r,v])=>{const c=R.coeficientes['Região '+r];const b=k=>c&&c.fontes[k]?Math.round(100*c.fontes[k].beta)+'%':'—';return `<tr><td class="l">${r}</td><td>${sg1(v.lula_delta_pp)}</td><td>${sg1(v.flavio_delta_pp)}</td><td>${sg(v.saldo)}</td><td><b>${v.lula_fatia_saldo==null?'—':f1(v.lula_fatia_saldo)+'%'}</b></td><td>${b('70')}</td><td>${b('14')}</td><td>${b('55')}</td><td>${b('comparecimento')}</td></tr>`}).join('')}</table></div>`;
+  h+=`<h3>Município a município</h3><p class="sub">Lula ganhou pontos em ${f0(RM.lula_cresceu_pp)} dos ${f0(RM.n_municipios)} municípios e levou a maior parte do saldo em ${f0(RM.lula_maioria_saldo)}; Flávio perdeu votos absolutos em ${f0(RM.flavio_perdeu_votos)}. Nos ${f0(RM.com_regressao)} municípios com regressão própria: ${Object.entries(RM.fontes).map(([c,v])=>`${nome(c)} mediana ${Math.round(100*v.mediana)}% (quartis ${Math.round(100*v.q1)}–${Math.round(100*v.q3)}%; acima de 50% em ${Math.round(v.pct_maioria_lula)}% das cidades)`).join('; ')}.</p>`;
+  h+=secaoQuartis(R.quartis['Brasil'],'qbr');
+ }else{
+  h+=`<h3>Regressão ecológica — Brasil, ${ROT[recorte]}</h3><p class="sub">Modelo nacional sem efeitos fixos, só com as urnas deste recorte.</p>`;
+  if(n.regressao)h+=tabelaRegressao(n.regressao,null,recorte==='apos'?R.recortes.ate.nacional.regressao:R.recortes.apos.nacional.regressao,'', '',recorte==='apos'?`Até ${PR.limite}`:`Após ${PR.limite}`);
+  const ufsR=Object.entries(R.recortes[recorte].ufs).sort((a,b)=>b[1].grupos-a[1].grupos);
+  h+=`<h3>Por UF — ${ROT[recorte]}</h3><div class="tw alto"><table><tr><th class="l">UF</th><th>Grupos</th><th>Votantes 2º</th><th>Lula 1º → 2º</th><th>Δ Lula</th><th>Δ Flávio</th><th>Saldo</th><th>→ Lula</th><th>Δ abst.</th></tr>${ufsR.map(([uf,v])=>`<tr><td class="l">${uf}</td><td>${f0(v.grupos)}</td><td>${f0(v.comparecimento_t2)}</td><td>${pc(v.lula_pct_t1)} → ${pc(v.lula_pct_t2)}</td><td><b>${sg1(v.lula_delta_pp)}</b></td><td>${sg1(v.flavio_delta_pp)}</td><td>${sg(v.saldo)}</td><td>${v.lula_fatia_saldo==null?'—':f1(v.lula_fatia_saldo)+'%'}</td><td>${v.taxa_abst_t1==null?'—':sg1(v.taxa_abst_t2-v.taxa_abst_t1)}</td></tr>`).join('')}</table></div>`;
+  h+=secaoQuartis(n.quartis||{},'qbr');
+ }
  $('#painel').innerHTML=h}
 
 painelBrasil();
